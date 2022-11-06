@@ -11,7 +11,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from custom_components.moonraker.const import (
     DOMAIN,
-#    PLATFORMS,
     CONF_HOST,
     CONF_PORT,
     CONF_NAME,
