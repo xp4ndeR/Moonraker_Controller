@@ -19,7 +19,7 @@ from homeassistant.components.number import NumberEntity
 
 from homeassistant.helpers.typing import StateType
 
-from custom_components.moonraker.common_raker import MoonrakerUpdateCoordinator
+from .common_raker import MoonrakerUpdateCoordinator
 
 from .const import DOMAIN
 
@@ -103,7 +103,7 @@ async def async_setup_entry(hass : HomeAssistant, config_entry : ConfigEntry, as
     device_id=config_entry.data.get(CONF_NAME).lower()
     _LOGGER.debug("numbers for device_id: %s", device_id)
     assert device_id is not None
-    
+
     entities: list[NumberEntity] = []
     for x in NUMBERS_LIST:
         entities.append(MoonrakerNumberBase(
@@ -143,7 +143,7 @@ class MoonrakerNumberBase(CoordinatorEntity, NumberEntity):
         """Initialize the number."""
         super().__init__(coordinator)
         self._number_type=number_type
-        self._number_name=number_name        
+        self._number_name=number_name
         self._device_id=device_id
         self._attr_unique_id = f"{device_id}_{number_type}"
         self._attr_icon = attr_icon
@@ -151,10 +151,10 @@ class MoonrakerNumberBase(CoordinatorEntity, NumberEntity):
         self._attr_native_max_value = native_max_value
         self._attr_native_min_value = native_min_value
         self._attr_native_step = native_step
-        self._attr_mode = mode        
+        self._attr_mode = mode
         self._gcode = gcode
         _LOGGER.debug("_device_id :%s",self._device_id)
-        
+
     @property
     def name(self) -> str:
         """Return the name of the number."""
@@ -172,7 +172,7 @@ class MoonrakerNumberBase(CoordinatorEntity, NumberEntity):
             await self.coordinator.moonraker.push_data(self._gcode.format(value))
         except Exception as e:
             _LOGGER.error("async_set_native_value FAILED: %s", self._attr_unique_id)
-            raise e 
+            raise e
 
     @property
     def device_info(self) -> DeviceInfo:

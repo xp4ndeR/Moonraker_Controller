@@ -15,8 +15,8 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.typing import ConfigType
 
 from homeassistant.const import (
-#    CONF_API_KEY,
-#    CONF_BINARY_SENSORS,
+    #    CONF_API_KEY,
+    #    CONF_BINARY_SENSORS,
     CONF_HOST,
     # CONF_MONITORED_CONDITIONS,
     CONF_NAME,
@@ -30,20 +30,21 @@ from homeassistant.const import (
     Platform,
 )
 
-from custom_components.moonraker.const import (
+from .const import (
     DOMAIN,
     DEFAULT_PORT,
     DEFAULT_NAME,
     DEFAULT_HOST,
-    VERSION
+    VERSION,
 )  # pylint:disable=unused-import
 
-from custom_components.moonraker.moonraker_client import MoonrakerClient
-from custom_components.moonraker.common_raker import MoonrakerUpdateCoordinator
+from .moonraker_client import MoonrakerClient
+from .common_raker import MoonrakerUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [Platform.CLIMATE,Platform.SENSOR,Platform.NUMBER]
+PLATFORMS = [Platform.CLIMATE, Platform.SENSOR, Platform.NUMBER]
+
 
 @asyncio.coroutine
 def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -56,7 +57,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.debug("Moonraker.coordinator: %s", entry.entry_id)
 
         mrclient = MoonrakerClient(
-            hass, 
+            hass,
             entry.data.get(CONF_HOST),
             entry.data.get(CONF_NAME),
             entry.data.get(CONF_PORT),
