@@ -1,0 +1,8 @@
+__pycache__
+pythonenv*
+venv
+.venv
+.coverage
+*.secret
+*.user
+traces
