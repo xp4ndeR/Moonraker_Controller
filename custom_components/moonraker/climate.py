@@ -1,39 +1,27 @@
+""" Moonraker Climate Base entity """
 import logging
 
-from homeassistant.const import TEMP_CELSIUS, CONF_NAME, ATTR_TEMPERATURE
-
 from homeassistant.components.climate import ClimateEntity
-from homeassistant.components.climate.const import (
-    ATTR_FAN_MODE,
-    ATTR_HVAC_MODE,
-    ATTR_PRESET_MODE,
-    ATTR_SWING_MODE,
-    PRESET_AWAY,
-    PRESET_COMFORT,
-    PRESET_BOOST,
-    PRESET_ECO,
-    PRESET_NONE,
-    SUPPORT_TARGET_TEMPERATURE,
-    SUPPORT_FAN_MODE,
-    SUPPORT_PRESET_MODE,
-    SUPPORT_SWING_MODE,
+from homeassistant.components.climate import (
     ClimateEntityFeature,
-    HVACMode,
     HVACAction,
+    HVACMode,
+    #ATTR_FAN_MODE,
+    #ATTR_HVAC_MODE,
+    #ATTR_PRESET_MODE,
+    #ATTR_SWING_MODE,
+    #PRESET_NONE,
 )
+
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
+from homeassistant.const import ATTR_TEMPERATURE, CONF_NAME, TEMP_CELSIUS
+from homeassistant.core import HomeAssistant #, callback
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.typing import StateType
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+#from homeassistant.helpers.typing import StateType
 
 from .common_raker import MoonrakerUpdateCoordinator
-
 from .const import DOMAIN
 
 CLIMATES_LIST = (
@@ -48,7 +36,7 @@ CLIMATES_LIST = (
         "min_temp": 0,
         "target_temperature_step": 1,
         "gcode": "SET_HEATER_TEMPERATURE HEATER=extruder TARGET={:.0f}",
-        "fan_mode": SUPPORT_FAN_MODE,
+        "fan_mode": ClimateEntityFeature.FAN_MODE,
         "mode": ClimateEntityFeature.TARGET_TEMPERATURE,
     },
     {
@@ -62,7 +50,7 @@ CLIMATES_LIST = (
         "min_temp": 0,
         "target_temperature_step": 5,
         "gcode": "SET_HEATER_TEMPERATURE HEATER=heater_bed TARGET={:.0f}",
-        "fan_mode": SUPPORT_FAN_MODE,
+        "fan_mode": ClimateEntityFeature.FAN_MODE,
         "mode": ClimateEntityFeature.TARGET_TEMPERATURE,
     },
 )
@@ -76,27 +64,28 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
+    """ async_setup_entry """
     coordinator: MoonrakerUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id]
     device_id = config_entry.data.get(CONF_NAME).lower()
     assert device_id is not None
 
     entities: list[ClimateEntity] = []
-    for x in CLIMATES_LIST:
+    for climate in CLIMATES_LIST:
         entities.append(
             MoonrakerClimateBase(
                 coordinator,
                 device_id,
-                x["climate_type"],
-                x["climate_target"],
-                x["climate_power"],
-                x["climate_name"],
-                x["attr_icon"],
-                x["temperature_unit"],
-                x["max_temp"],
-                x["min_temp"],
-                x["target_temperature_step"],
-                x["gcode"],
-                x["mode"],
+                climate["climate_type"],
+                climate["climate_target"],
+                climate["climate_power"],
+                climate["climate_name"],
+                climate["attr_icon"],
+                climate["temperature_unit"],
+                climate["max_temp"],
+                climate["min_temp"],
+                climate["target_temperature_step"],
+                climate["gcode"],
+                climate["mode"],
             )
         )
 
@@ -104,6 +93,7 @@ async def async_setup_entry(
 
 
 class MoonrakerClimateBase(CoordinatorEntity, ClimateEntity):
+    """ Moonraker Climate Base entity """
     should_poll = False
 
     def __init__(
@@ -186,14 +176,6 @@ class MoonrakerClimateBase(CoordinatorEntity, ClimateEntity):
             await self.coordinator.moonraker.push_data(
                 self._gcode.format(kwargs[ATTR_TEMPERATURE])
             )
-        except Exception as e:
-            _LOGGER.error("async_set_native_value FAILED: %s", self._attr_unique_id)
-            raise e
-
-    # async def async_set_hvac_mode(self, **kwargs):
-    #     if ATTR_HVAC_MODE in kwargs:
-    #         if kwargs[ATTR_HVAC_MODE]== HVACMode.OFF:
-    #             await self.async_set_temperature({ATTR_TEMPERATURE:0})
-
-    # async def async_set_fan_mode(self, fan_mode):
-    #    """Set new target fan mode."""
+        except Exception as err:
+            _LOGGER.error("FAILED async_set_native_value function: %s", self._attr_unique_id)
+            raise err

@@ -6,22 +6,17 @@ from homeassistant.const import (
     CONF_NAME,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant #, callback
+from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import DeviceInfo
 
 from homeassistant.components.sensor import (
-    SensorDeviceClass,
+    #SensorDeviceClass,
     SensorEntity,
-    SensorStateClass,
+    #SensorStateClass,
 )
-
-from homeassistant.helpers.typing import StateType
 
 from .common_raker import MoonrakerUpdateCoordinator
 
@@ -91,6 +86,7 @@ async def async_setup_entry(
 
 
 class MoonrakerSensorBase(CoordinatorEntity, SensorEntity):
+    """ Moonraker Sensor Base entity for Home Assistant """
     should_poll = False
 
     def __init__(
@@ -125,4 +121,4 @@ class MoonrakerSensorBase(CoordinatorEntity, SensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo:
-        return self.coordinator._moonraker.device_info
+        return self.coordinator.device_info

@@ -74,9 +74,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 hass.config_entries.async_forward_entry_setup(entry, component)
             )
         return True
-    except Exception as e:
-        _LOGGER.exception(e)
-        raise ConfigEntryNotReady
+    except Exception as err:
+        _LOGGER.exception(err)
+        raise ConfigEntryNotReady from err
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
