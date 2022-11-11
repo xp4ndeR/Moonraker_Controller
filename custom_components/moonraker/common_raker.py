@@ -16,6 +16,16 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
+from homeassistant.const import (
+    CONF_HOST,
+    CONF_NAME,
+    CONF_PORT,
+    # CONF_SENSORS,
+    CONF_SSL,
+    # CONF_VERIFY_SSL,
+    CONF_USERNAME,
+    CONF_PASSWORD,
+)
 from .const import (
     CONF_WEBSOCKET
 )
@@ -30,9 +40,19 @@ class MoonrakerUpdateCoordinator(DataUpdateCoordinator):
     """My custom coordinator."""
     config_entry: ConfigEntry
 
-    def __init__(self, hass : HomeAssistant, moonraker : MoonrakerClient, config_entry : ConfigEntry, interval : int) -> None:
+    def __init__(self, hass : HomeAssistant, config_entry : ConfigEntry, interval : int) -> None:
         """Initialize my coordinator."""
-        self._moonraker = moonraker
+        self._moonraker = MoonrakerClient(
+            hass,
+            config_entry.data.get(CONF_HOST),
+            config_entry.data.get(CONF_NAME),
+            config_entry.data.get(CONF_PORT),
+            config_entry.data.get(CONF_SSL),
+            config_entry.data.get(CONF_WEBSOCKET),
+            config_entry.data.get(CONF_USERNAME),
+            config_entry.data.get(CONF_PASSWORD),
+        )
+
         if config_entry.data.get(CONF_WEBSOCKET) is True:
             super().__init__(hass,_LOGGER, name="Moonraker",update_interval=timedelta(seconds=interval),)
         else:
@@ -42,6 +62,7 @@ class MoonrakerUpdateCoordinator(DataUpdateCoordinator):
 
         self.config_entry = config_entry
         _LOGGER.debug("MoonrakerUpdateCoordinator __init__ : done")
+
 
     async def _async_update_data(self):
         """Fetch data from API endpoint.        """

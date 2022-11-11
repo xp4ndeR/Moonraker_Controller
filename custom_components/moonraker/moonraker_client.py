@@ -26,6 +26,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class MoonrakerClient:
     """Moonraker Client class to handle http(s):// or ws:// exchange"""
+    _attr_objects={"display_status","heater_bed","toolhead","extruder","print_stats","webhooks","fan"}
 
     def __init__(
         self,
@@ -111,7 +112,7 @@ class MoonrakerClient:
                 await websocket.send(json.dumps(ref_json))
                 res = await websocket.recv()
                 _LOGGER.debug("websockets_co response code: %s", res)
-                resj= json.loads(res)
+                resj = json.loads(res)
                 self._connection_id = resj["result"]["connection_id"]
                 wslogger = logging.getLogger("websockets")
                 wslogger.setLevel(logging.DEBUG)
@@ -122,7 +123,34 @@ class MoonrakerClient:
             raise err
         return True if self._connection_id is not None else False
 
+    async def subscribe(self):
+        """subscribe"""
+        if self._connection_id is None:
+            raise Exception("No connection_id is set")
+
+        url = URL.build(
+            scheme=self._protocol,
+            host=self._host,
+            port=self._port,
+            path="/printer/objects/subscribe",
+        )
+        _LOGGER.debug("subscribe url : %s", url)
+        headers = {}
+        data = [{"connection_id": self._connection_id}, self._attr_objects]
+
+        try:
+            func = functools.partial(
+                requests.post, str(url), headers=headers, data=data
+            )
+            res = await self._hass.async_add_executor_job(func)
+            _LOGGER.debug("subscribe status_code: %s", res.status_code)
+        except Exception as err:
+            _LOGGER.error("REQUEST FAILED subscribe : %s", err)
+            raise err
+        return True if res.status_code == 200 else False
+
     async def websockets_sub(self):
+        """ Subscribe to updatefrom websockets Protocol """
         url = URL.build(
             scheme="ws", host=self._host, port=self._port, path="/websocket"
         )
@@ -149,27 +177,27 @@ class MoonrakerClient:
         # return True if res.status_code==200 else False
 
     async def fetch_data(self):
+        """ Get Data from HTTP(s) Protocol """
         url = URL.build(
             scheme=self._protocol,
             host=self._host,
             port=self._port,
             path="/printer/objects/query",
-            query_string="display_status&heater_bed&toolhead&extruder&print_stats&webhooks&fan",
+            query_string="&".join(self._attr_objects),
         )
         headers = {}
         ref_json = {}
-        # await self.websockets_co()
         try:
             func = functools.partial(
                 requests.get, str(url), headers=headers, json=ref_json
             )
             res = await self._hass.async_add_executor_job(func)
             await self._printer.parse(res.json())
-            # for dev_data in res.json_data or []:
         except Exception as err:
             _LOGGER.error("REQUEST FAILED fetch_data : %s", err)
             raise err
         return True if res.status_code == 200 else False
+
 
     async def push_data(self, gcode):
         """Send GCODE to moonraker server"""

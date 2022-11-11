@@ -6,7 +6,6 @@ import logging
 import asyncio
 from typing import cast
 import voluptuous as vol
-
 import homeassistant.util.dt as dt_util
 
 from homeassistant.config_entries import ConfigEntry
@@ -37,9 +36,10 @@ from .const import (
     DEFAULT_NAME,
     DEFAULT_HOST,
     VERSION,
+    POLLING,
 )  # pylint:disable=unused-import
 
-from .moonraker_client import MoonrakerClient
+
 from .common_raker import MoonrakerUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -49,25 +49,16 @@ PLATFORMS = [Platform.CLIMATE, Platform.SENSOR, Platform.NUMBER]
 
 @asyncio.coroutine
 def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """ Do async_setup stuff """
     hass.data.setdefault(DOMAIN, {})
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Setup Moonraker Controller from a config entry."""
     try:
         _LOGGER.debug("Moonraker.coordinator: %s", entry.entry_id)
-
-        mrclient = MoonrakerClient(
-            hass,
-            entry.data.get(CONF_HOST),
-            entry.data.get(CONF_NAME),
-            entry.data.get(CONF_PORT),
-            entry.data.get(CONF_SSL),
-            entry.data.get(CONF_WEBSOCKET),
-            entry.data.get(CONF_USERNAME),
-            entry.data.get(CONF_PASSWORD),
-        )
-        coordinator = MoonrakerUpdateCoordinator(hass, mrclient, entry, 30)
+        coordinator = MoonrakerUpdateCoordinator(hass, entry, POLLING)
         await coordinator.async_config_entry_first_refresh()
 
         hass.data[DOMAIN][entry.entry_id] = coordinator
@@ -82,6 +73,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Delete Moonraker Controller from a config entry."""
     unload_ok = all(
         await asyncio.gather(
             *[
