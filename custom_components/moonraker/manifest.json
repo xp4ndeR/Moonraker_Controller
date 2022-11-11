@@ -1,12 +1,14 @@
 {
     "domain": "moonraker",
     "name": "Moonraker Controller",
+    "integration_type": "device",
+    "issue_tracker": "github.com/xp4ndeR/Moonraker_Controller/issues",
     "version": "0.0.1",
     "dependencies": [],
+    "requirements": ["websockets==10.4"],
     "codeowners": [
       "@xp4nder"
     ],
     "iot_class": "local_polling",
     "config_flow": true
   }
-  
