@@ -15,6 +15,7 @@
           "host": "Host",
           "port": "Port",
           "ssl": "SSL",
+          "websocket": "Websocket",
           "password": "Password",
           "username": "Username"
         }

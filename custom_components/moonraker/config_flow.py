@@ -1,29 +1,34 @@
+""" Config flow for Moonraker Controller """
 import logging
 from typing import Any
 
-import re
+# import re
 import voluptuous as vol
 
-from homeassistant import config_entries, core, exceptions
+from homeassistant import config_entries, exceptions
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
-from homeassistant import data_entry_flow
-from custom_components.moonraker.moonraker_client import MoonrakerClient
 
-from custom_components.moonraker.const import (
-    DOMAIN,
-#    PLATFORMS,
+# from homeassistant.helpers.aiohttp_client import async_create_clientsession
+# from homeassistant import data_entry_flow
+from homeassistant.const import (
     CONF_HOST,
     CONF_NAME,
     CONF_PORT,
     CONF_SSL,
     CONF_USERNAME,
     CONF_PASSWORD,
+)
+
+from .moonraker_client import MoonrakerClient
+
+from .const import (
+    DOMAIN,
+    #    PLATFORMS,
+    CONF_WEBSOCKET,
     DEFAULT_PORT,
     DEFAULT_NAME,
-    DEFAULT_HOST
+    DEFAULT_HOST,
 )  # pylint:disable=unused-import
-
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,38 +36,58 @@ _LOGGER = logging.getLogger(__name__)
 
 DATA_SCHEMA = vol.Schema(
     {
+        vol.Required(CONF_NAME, default=DEFAULT_NAME, description="Printer Name"): str,
         vol.Required(
-            CONF_NAME, default=DEFAULT_NAME, description="Printer Name"
+            CONF_HOST,
+            default=DEFAULT_HOST,
+            description="Hostname or IP adresse of moonraker server",
         ): str,
         vol.Required(
-            CONF_HOST,  default=DEFAULT_HOST, description="Hostname or IP adresse of moonraker server"
+            CONF_PORT,
+            default=DEFAULT_PORT,
+            description="Port of your instance of moonraker",
         ): str,
-        vol.Required(
-            CONF_PORT, default=DEFAULT_PORT, description="Port of your instance of moonraker"
-        ): str,        
-        vol.Optional(
-            CONF_SSL, default=False, description="SSL Enable"
-        ): bool,        
+        vol.Optional(CONF_SSL, default=False, description="SSL Enable"): bool,
+        vol.Optional(CONF_WEBSOCKET, default=False, description=" Use websocket"): bool,
         vol.Optional(
             CONF_USERNAME, default="Your username", description="The username used"
         ): str,
         vol.Optional(
-            CONF_PASSWORD, default="Your password", description="The password used"): str,
+            CONF_PASSWORD, default="Your password", description="The password used"
+        ): str,
     }
 )
 
+
 async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
-    if len(data[CONF_HOST]) < 3:
+    """Validate input for moonraker controller"""
+    if data[CONF_HOST] is None:
         raise InvalidHost
-    hub = MoonrakerClient(hass, data[CONF_HOST], data[CONF_NAME], data[CONF_PORT], data[CONF_SSL], data[CONF_USERNAME],  data[CONF_PASSWORD])
-    result = await hub.test_connection()
+    hub = MoonrakerClient(
+        hass,
+        data[CONF_HOST],
+        data[CONF_NAME],
+        data[CONF_PORT],
+        data[CONF_SSL],
+        data[CONF_WEBSOCKET],
+        data[CONF_USERNAME],
+        data[CONF_PASSWORD],
+    )
+    result = await hub.server_info()
     if not result:
         raise CannotConnect
     title = hub.hub_id
     _LOGGER.debug("Hub.hub_id: %s", title)
+
+    if (data[CONF_WEBSOCKET]) is True:
+        wsc = await hub.websockets_co()
+        if not wsc:
+            raise CannotConnect
     return {"title": title}
 
+
 class MoonrakerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Config Flow for moonraker controller"""
 
     VERSION = 1
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
@@ -87,11 +112,14 @@ class MoonrakerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=DATA_SCHEMA, errors=errors
         )
 
+
 class CannotConnect(exceptions.HomeAssistantError):
     """Error to indicate we cannot connect."""
 
+
 class InvalidAuth(exceptions.HomeAssistantError):
     """Error to indicate there is invalid auth."""
+
 
 class InvalidHost(exceptions.HomeAssistantError):
     """Error to indicate there is an invalid hostname."""

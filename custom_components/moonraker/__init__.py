@@ -32,6 +32,7 @@ from homeassistant.const import (
 
 from .const import (
     DOMAIN,
+    CONF_WEBSOCKET,
     DEFAULT_PORT,
     DEFAULT_NAME,
     DEFAULT_HOST,
@@ -62,6 +63,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             entry.data.get(CONF_NAME),
             entry.data.get(CONF_PORT),
             entry.data.get(CONF_SSL),
+            entry.data.get(CONF_WEBSOCKET),
             entry.data.get(CONF_USERNAME),
             entry.data.get(CONF_PASSWORD),
         )

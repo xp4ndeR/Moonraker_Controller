@@ -16,12 +16,15 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
+from .const import (
+    CONF_WEBSOCKET
+)
 
 from .moonraker_client import MoonrakerClient, Printer
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(seconds=30)
+SCAN_INTERVAL = timedelta(seconds=60)
 
 class MoonrakerUpdateCoordinator(DataUpdateCoordinator):
     """My custom coordinator."""
@@ -29,8 +32,14 @@ class MoonrakerUpdateCoordinator(DataUpdateCoordinator):
 
     def __init__(self, hass : HomeAssistant, moonraker : MoonrakerClient, config_entry : ConfigEntry, interval : int) -> None:
         """Initialize my coordinator."""
-        super().__init__(hass,_LOGGER, name="Moonraker",update_interval=timedelta(seconds=interval),)
         self._moonraker = moonraker
+        if config_entry.data.get(CONF_WEBSOCKET) is True:
+            super().__init__(hass,_LOGGER, name="Moonraker",update_interval=timedelta(seconds=interval),)
+        else:
+            super().__init__(hass,_LOGGER, name="Moonraker",)
+            self._moonraker.websockets_co()
+            self._moonraker.websockets_sub()
+
         self.config_entry = config_entry
         _LOGGER.debug("MoonrakerUpdateCoordinator __init__ : done")
 
@@ -44,6 +53,17 @@ class MoonrakerUpdateCoordinator(DataUpdateCoordinator):
         except Exception as err:
             _LOGGER.exception(err)
             raise UpdateFailed(f"Error communicating with API: {err}") from err
+
+    # async def async_set_updated_data(self,data):
+    #     """Push data from API endpoint.        """
+    #     try:
+    #         # Note: asyncio.TimeoutError and aiohttp.ClientError are already
+    #         # handled by the data update coordinator.
+    #             return await self._moonraker.fetch_data()
+    #     except Exception as err:
+    #         _LOGGER.exception(err)
+    #         raise UpdateFailed(f"Error communicating updating data: {err}") from err
+
 
     @property
     def printer(self) -> Printer:
