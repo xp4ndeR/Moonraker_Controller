@@ -10,7 +10,7 @@ Installed through [HACS](https://hacs.xyz/).
 
 `Start HACS -> Integrations -> Overflow menu -> Custom repositories`
 
-Add `https://github.com/xp4ndeR/Moonraker_Controller` as repository in `Repository` field.
+Add `https://github.com/xp4ndeR/Moonraker_Controller` as repository in `Custom Repository` field.
 Select `Integration` as `Category`.
 
 ![Step 01](img/HACS_01.png)
