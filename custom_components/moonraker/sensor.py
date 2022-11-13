@@ -65,7 +65,7 @@ SENSORS_LIST = (
     {
         "component": "toolhead",
         "attribut": "position_y",
-        "name": "Position Z",
+        "name": "Position Y",
         "attr_icon": "mdi:printer-3d",
         "unit_of_measurement": "mm",
     },

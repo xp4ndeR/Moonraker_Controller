@@ -1,6 +1,7 @@
 """ Moonraker Client """
 # import asyncio
 import requests
+from requests import ConnectionError
 import functools
 import logging
 import json
@@ -105,11 +106,10 @@ class MoonrakerClient:
             port=self._port,
             path="/server/info",
         )
-        res = self._http_get(url)
+        res = await self._http_get(url)
         if res is not None and "result" in res:
             await self._printer.klippy.update(res["result"])
-        _LOGGER.debug("server_info response code: %s", res.status_code)
-        return True if res.status_code == 200 else False
+        return True # TODO HANDLE Connnection failure
 
     async def query_objects(self):
         """Get Data from HTTP(s) Protocol"""
@@ -120,9 +120,9 @@ class MoonrakerClient:
             path="/printer/objects/query",
             query_string="&".join(self._attr_objects),
         )
-        res = self._http_get(url)
+        res = await self._http_get(url)
         await self._printer.parse(res)
-        return True if res.status_code == 200 else False
+        return True # TODO HANDLE Connnection failure
 
     async def websockets_test(self) -> bool:
         """Get Connection ID using Websocket protocol"""
@@ -236,12 +236,10 @@ class MoonrakerClient:
 
     async def _http_get(self, url, headers={}, refjson={}) -> json:
         """Get server information using http get"""
-        try:
-            func = functools.partial(
-                requests.get, str(url), headers=headers, json=refjson
-            )
-            result = await self._hass.async_add_executor_job(func)
-            return result.json()
-        except Exception as err:
-            _LOGGER.error("REQUEST FAILED in http_get function : %s", err)
-            raise err
+        func = functools.partial(
+            requests.get, str(url), headers=headers, json=refjson
+        )
+        result = await self._hass.async_add_executor_job(func)
+        if result.status_code!=200:
+            raise ConnectionError("REQUEST FAILED for {url} with status code {code}".format(url = str(url),code=result.status_code))
+        return result.json()

@@ -43,7 +43,7 @@ class Printer:
             sw_version=self.klippy.moonraker_version,
         )
 
-    async def parse(self, data):
+    async def parse(self, data : json):
         """Reading result from query"""
         try:
             if data is not None and "result" in data:
