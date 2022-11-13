@@ -3,7 +3,6 @@ import logging
 
 from homeassistant.const import (
     PERCENTAGE,
-    CONF_NAME,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant  # , callback
@@ -14,12 +13,13 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.components.number import NumberEntity
 from .common_raker import MoonrakerUpdateCoordinator
 from .const import DOMAIN
-
+from homeassistant.util import slugify as util_slugify
 
 NUMBERS_LIST = (
     {
-        "number_type": "pressure_advance",
-        "number_name": "pressure advance",
+        "component": "extruder",
+        "attribut": "pressure_advance",
+        "name": "Pressure advance",
         "attr_icon": "mdi:printer-3d-nozzle",
         "unit_of_measurement": "s",
         "native_max_value": 1,
@@ -29,8 +29,9 @@ NUMBERS_LIST = (
         "mode": "box",
     },
     {
-        "number_type": "max_accel",
-        "number_name": "maximun accel",
+        "component": "toolhead",
+        "attribut": "max_accel",
+        "name": "Maximun accel",
         "attr_icon": "mdi:printer-3d",
         "unit_of_measurement": "mm/s²",
         "native_max_value": 10000,
@@ -40,8 +41,9 @@ NUMBERS_LIST = (
         "mode": "box",
     },
     {
-        "number_type": "max_velocity",
-        "number_name": "maximun velocity",
+        "component": "toolhead",
+        "attribut": "max_velocity",
+        "name": "Maximun velocity",
         "attr_icon": "mdi:printer-3d",
         "unit_of_measurement": "mm/s",
         "native_max_value": 10000,
@@ -51,8 +53,9 @@ NUMBERS_LIST = (
         "mode": "box",
     },
     {
-        "number_type": "max_accel_to_decel",
-        "number_name": "maximun accel to decel",
+        "component": "toolhead",
+        "attribut": "max_accel_to_decel",
+        "name": "maximun accel to decel",
         "attr_icon": "mdi:printer-3d",
         "unit_of_measurement": "mm/s²",
         "native_max_value": 10000,
@@ -62,8 +65,9 @@ NUMBERS_LIST = (
         "mode": "box",
     },
     {
-        "number_type": "square_corner_velocity",
-        "number_name": "square corner velocity",
+        "component": "toolhead",
+        "attribut": "square_corner_velocity",
+        "name": "square corner velocity",
         "attr_icon": "mdi:printer-3d-nozzle",
         "unit_of_measurement": "mm/s",
         "native_max_value": 100,
@@ -73,8 +77,9 @@ NUMBERS_LIST = (
         "mode": "box",
     },
     {
-        "number_type": "fan_speed",
-        "number_name": "Part fan speed",
+        "component": "fan",
+        "attribut": "speed",
+        "name": "Part fan speed",
         "attr_icon": "mdi:fan",
         "unit_of_measurement": PERCENTAGE,
         "native_max_value": 100,
@@ -95,27 +100,12 @@ async def async_setup_entry(
 ) -> None:
     """Add numbers for passed config_entry in HA."""
     coordinator: MoonrakerUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id]
-    _LOGGER.debug("numbers for entry_id: %s", config_entry.entry_id)
-    # device_id = config_entry.unique_id
-    device_id = config_entry.data.get(CONF_NAME).lower()
-    _LOGGER.debug("numbers for device_id: %s", device_id)
-    assert device_id is not None
-
     entities: list[NumberEntity] = []
     for entity in NUMBERS_LIST:
         entities.append(
             MoonrakerNumberBase(
                 coordinator,
-                entity["number_type"],
-                device_id,
-                entity["number_name"],
-                entity["attr_icon"],
-                entity["unit_of_measurement"],
-                entity["native_max_value"],
-                entity["native_min_value"],
-                entity["native_step"],
-                entity["gcode"],
-                entity["mode"],
+                entity
             )
         )
 
@@ -124,52 +114,47 @@ async def async_setup_entry(
 
 class MoonrakerNumberBase(CoordinatorEntity, NumberEntity):
     """Moonraker Number Enitity for Home Assistant"""
-
     should_poll = False
 
     def __init__(
         self,
         coordinator: MoonrakerUpdateCoordinator,
-        number_type: str,
-        device_id: str,
-        number_name: str,
-        attr_icon: str,
-        unit_of_measurement: str,
-        native_max_value: float,
-        native_min_value: float,
-        native_step: float,
-        gcode: str,
-        mode: str,
+        properties : dict
     ) -> None:
 
         """Initialize the number."""
         super().__init__(coordinator)
-        self._number_type = number_type
-        self._number_name = number_name
-        self._device_id = device_id
-        self._attr_unique_id = f"{device_id}_{number_type}"
-        self._attr_icon = attr_icon
-        self._attr_native_unit_of_measurement = unit_of_measurement
-        self._attr_native_max_value = native_max_value
-        self._attr_native_min_value = native_min_value
-        self._attr_native_step = native_step
-        self._attr_mode = mode
-        self._gcode = gcode
-        _LOGGER.debug("_device_id :%s", self._device_id)
+        self._attribut = properties["attribut"]
+        if "component" in properties:
+            self._component = properties["component"]
+        self._name = properties["name"]
+        self._code = util_slugify(self._name)
+        self._device_name = coordinator.moonraker.printer_id
+        self._attr_unique_id = f"{self._device_name}_{self._code}"
+        self._attr_icon = properties["attr_icon"]
+        self._attr_native_unit_of_measurement = properties["unit_of_measurement"]
+        self._attr_native_max_value =  properties["native_max_value"]
+        self._attr_native_min_value =  properties["native_min_value"]
+        self._attr_native_step =  properties["native_step"]
+        self._attr_mode = properties["mode"]
+        self._gcode = properties["gcode"]
+
 
     @property
     def name(self) -> str:
-        """Return the name of the number."""
-        return f"{self._number_type} {self._device_id}"
+        """Return the name of the sensor."""
+        return f"{self._name} {self._device_name}"
 
     @property
     def native_value(self) -> StateType:
-        return getattr(self.coordinator.printer, self._number_type)
+        if hasattr(self,"_component") is False :
+             return getattr(self.coordinator.printer, self._attribut)
+        else :
+            return getattr(getattr(self.coordinator.printer, self._component), self._attribut)
+
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""
-        _LOGGER.debug(self._gcode.format(value))
-        _LOGGER.debug("NumberEntity :%s", self._number_type)
         try:
             await self.coordinator.moonraker.push_data(self._gcode.format(value))
         except Exception as err:
@@ -179,3 +164,13 @@ class MoonrakerNumberBase(CoordinatorEntity, NumberEntity):
     @property
     def device_info(self) -> DeviceInfo:
         return self.coordinator.moonraker.device_info
+
+    async def async_added_to_hass(self):
+        """Run when this Entity has been added to HA."""
+        # Sensors should also register callbacks to HA when their state changes
+        self.coordinator.moonraker.register_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self):
+        """Entity being removed from hass."""
+        # The opposite of async_added_to_hass. Remove any registered call backs here.
+        self.coordinator.moonraker.remove_callback(self.async_write_ha_state)

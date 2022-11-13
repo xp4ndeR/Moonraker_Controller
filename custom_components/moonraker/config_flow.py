@@ -63,7 +63,7 @@ async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
     """Validate input for moonraker controller"""
     if data[CONF_HOST] is None:
         raise InvalidHost
-    hub = MoonrakerClient(
+    mrclient = MoonrakerClient(
         hass,
         data[CONF_HOST],
         data[CONF_NAME],
@@ -73,17 +73,14 @@ async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
         data[CONF_USERNAME],
         data[CONF_PASSWORD],
     )
-    result = await hub.server_info()
+    result = await mrclient.server_info()
     if not result:
         raise CannotConnect
-    title = hub.hub_id
-    _LOGGER.debug("Hub.hub_id: %s", title)
-
     if (data[CONF_WEBSOCKET]) is True:
-        wsc = await hub.websockets_co()
+        wsc = await mrclient.websockets_test()
         if not wsc:
             raise CannotConnect
-    return {"title": title}
+    return {"title": mrclient.printer_id}
 
 
 class MoonrakerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):

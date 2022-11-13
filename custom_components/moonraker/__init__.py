@@ -49,7 +49,7 @@ PLATFORMS = [Platform.CLIMATE, Platform.SENSOR, Platform.NUMBER]
 
 @asyncio.coroutine
 def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """ Do async_setup stuff """
+    """Do async_setup stuff"""
     hass.data.setdefault(DOMAIN, {})
     return True
 
