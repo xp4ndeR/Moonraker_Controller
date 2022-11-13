@@ -1,7 +1,8 @@
 """ Printer class and attributs parsing """
 import logging
 import json
-
+from .const import DOMAIN
+from homeassistant.helpers.entity import DeviceInfo
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -14,6 +15,7 @@ class Printer:
         self.toolhead = Toolhead(printerid)
         self.extruder = Extruder(printerid)
         self.heater_bed = Heater(printerid)
+        self.klippy= Klipper(printerid)
         self.fan = Fan(printerid)
         self._state = None
         self._webhooks = None
@@ -31,8 +33,15 @@ class Printer:
         return self._state
 
     @property
-    def moonraker_version(self) -> str:
-        return "NFO"  # self._info["moonraker_version"]
+    def device_info(self) -> DeviceInfo:
+        """Device info."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._id)},
+            manufacturer="Moonraker",
+            name="Moonraker",
+            #        configuration_url=str(configuration_url),
+            sw_version=self.klippy.moonraker_version,
+        )
 
     async def parse(self, data):
         """Reading result from query"""
@@ -186,6 +195,19 @@ class Toolhead(PrinterComponent):
         else:
             return None
 
+    @property
+    def position_z(self) -> float:
+        if 2 in self.position:
+            return self.position[2]
+        else:
+            return None
+
+    @property
+    def position_y(self) -> float:
+        if 1 in self.position:
+            return self.position[1]
+        else:
+            return None
 
 class Fan(PrinterComponent):
     """HeaterBed class for Home Assistant"""
@@ -204,6 +226,23 @@ class DisplayStatus(PrinterComponent):
         self.progress = None
         self.message = None
 
+
+class Klipper(PrinterComponent):
+    """Extruder class for Home Assistant"""
+
+    def __init__(self, uid) -> None:
+        super().__init__(uid)
+        self.klippy_connected = None
+        self.klippy_state = None
+        self.components = []
+        self.failed_components = []
+        self.registered_directories = []
+        self.warnings = []
+        self.websocket_count = 0
+        self.moonraker_version = None
+        self.missing_klippy_requirements = []
+        self.api_version = []
+        self.api_version_string = None
 
 class MoonrakerStats:
     """MoonrakerStats class for Home Assistant"""

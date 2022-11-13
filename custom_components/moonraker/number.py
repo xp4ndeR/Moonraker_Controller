@@ -102,24 +102,18 @@ async def async_setup_entry(
     coordinator: MoonrakerUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id]
     entities: list[NumberEntity] = []
     for entity in NUMBERS_LIST:
-        entities.append(
-            MoonrakerNumberBase(
-                coordinator,
-                entity
-            )
-        )
+        entities.append(MoonrakerNumberBase(coordinator, entity))
 
     async_add_entities(entities)
 
 
 class MoonrakerNumberBase(CoordinatorEntity, NumberEntity):
     """Moonraker Number Enitity for Home Assistant"""
+
     should_poll = False
 
     def __init__(
-        self,
-        coordinator: MoonrakerUpdateCoordinator,
-        properties : dict
+        self, coordinator: MoonrakerUpdateCoordinator, properties: dict
     ) -> None:
 
         """Initialize the number."""
@@ -133,12 +127,11 @@ class MoonrakerNumberBase(CoordinatorEntity, NumberEntity):
         self._attr_unique_id = f"{self._device_name}_{self._code}"
         self._attr_icon = properties["attr_icon"]
         self._attr_native_unit_of_measurement = properties["unit_of_measurement"]
-        self._attr_native_max_value =  properties["native_max_value"]
-        self._attr_native_min_value =  properties["native_min_value"]
-        self._attr_native_step =  properties["native_step"]
+        self._attr_native_max_value = properties["native_max_value"]
+        self._attr_native_min_value = properties["native_min_value"]
+        self._attr_native_step = properties["native_step"]
         self._attr_mode = properties["mode"]
         self._gcode = properties["gcode"]
-
 
     @property
     def name(self) -> str:
@@ -147,30 +140,24 @@ class MoonrakerNumberBase(CoordinatorEntity, NumberEntity):
 
     @property
     def native_value(self) -> StateType:
-        if hasattr(self,"_component") is False :
-             return getattr(self.coordinator.printer, self._attribut)
-        else :
-            return getattr(getattr(self.coordinator.printer, self._component), self._attribut)
-
+        if hasattr(self, "_component") is False:
+            return getattr(self.coordinator.printer, self._attribut)
+        else:
+            return getattr(
+                getattr(self.coordinator.printer, self._component), self._attribut
+            )
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""
         try:
             await self.coordinator.moonraker.push_data(self._gcode.format(value))
         except Exception as err:
-            _LOGGER.error("FAILED async_set_native_value function for number : %s", self._attr_unique_id)
+            _LOGGER.error(
+                "FAILED async_set_native_value function for number : %s",
+                self._attr_unique_id,
+            )
             raise err
 
     @property
     def device_info(self) -> DeviceInfo:
-        return self.coordinator.moonraker.device_info
-
-    async def async_added_to_hass(self):
-        """Run when this Entity has been added to HA."""
-        # Sensors should also register callbacks to HA when their state changes
-        self.coordinator.moonraker.register_callback(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self):
-        """Entity being removed from hass."""
-        # The opposite of async_added_to_hass. Remove any registered call backs here.
-        self.coordinator.moonraker.remove_callback(self.async_write_ha_state)
+        return self.coordinator.moonraker.printer.device_info

@@ -10,11 +10,12 @@ from homeassistant.components.climate import (
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS
-from homeassistant.core import HomeAssistant #, callback
+from homeassistant.core import HomeAssistant  # , callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-#from homeassistant.helpers.typing import StateType
+
+# from homeassistant.helpers.typing import StateType
 from homeassistant.util import slugify as util_slugify
 from .common_raker import MoonrakerUpdateCoordinator
 from .const import DOMAIN
@@ -61,7 +62,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """ async_setup_entry """
+    """async_setup_entry"""
     coordinator: MoonrakerUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id]
     entities: list[ClimateEntity] = []
     for climate in CLIMATES_LIST:
@@ -87,13 +88,12 @@ async def async_setup_entry(
 
 
 class MoonrakerClimateBase(CoordinatorEntity, ClimateEntity):
-    """ Moonraker Climate Base entity """
-    should_poll = False
+    """Moonraker Climate Base entity"""
 
     def __init__(
         self,
         coordinator: MoonrakerUpdateCoordinator,
-        component:str,
+        component: str,
         climate_type: str,
         climate_target: str,
         climate_power: str,
@@ -127,7 +127,6 @@ class MoonrakerClimateBase(CoordinatorEntity, ClimateEntity):
         self._component = component
         self._climate_component = getattr(self.coordinator.printer, self._component)
 
-
     @property
     def name(self) -> str:
         """Return the name of the number."""
@@ -137,7 +136,9 @@ class MoonrakerClimateBase(CoordinatorEntity, ClimateEntity):
     def hvac_action(self):
         power = getattr(self._climate_component, self._climate_power)
         trg = getattr(self._climate_component, self._climate_target)
-        if trg > 0 and power > 0:
+        if trg is None or power is None:
+            return HVACAction.OFF
+        elif trg > 0 and power > 0:
             return HVACAction.HEATING
         elif trg > 0 and power == 0:
             return HVACAction.IDLE
@@ -146,27 +147,27 @@ class MoonrakerClimateBase(CoordinatorEntity, ClimateEntity):
 
     @property
     def current_temperature(self):
-        return getattr(self._climate_component,self._climate_type)
+        return getattr(self._climate_component, self._climate_type)
 
     @property
     def target_temperature(self):
-        return  getattr(self._climate_component, self._climate_target)
+        return getattr(self._climate_component, self._climate_target)
 
     @property
     def hvac_mode(self) -> HVACMode:
         """Set HVAC mode."""
         return (
             HVACMode.HEAT
-            if  getattr(self._climate_component, self._climate_target) != 0
+            if getattr(self._climate_component, self._climate_target) != 0
             else HVACMode.OFF
         )
 
     @property
     def device_info(self) -> DeviceInfo:
-        return self.coordinator.moonraker.device_info
+        return self.coordinator.moonraker.printer.device_info
 
     async def async_set_temperature(self, **kwargs):
-        """ Send gcode to set target temp """
+        """Send gcode to set target temp"""
         _LOGGER.debug(self._gcode.format(kwargs[ATTR_TEMPERATURE]))
         _LOGGER.debug("ClimateEntity :%s", self._climate_type)
         try:
@@ -174,15 +175,7 @@ class MoonrakerClimateBase(CoordinatorEntity, ClimateEntity):
                 self._gcode.format(kwargs[ATTR_TEMPERATURE])
             )
         except Exception as err:
-            _LOGGER.error("FAILED async_set_native_value function: %s", self._attr_unique_id)
+            _LOGGER.error(
+                "FAILED async_set_native_value function: %s", self._attr_unique_id
+            )
             raise err
-
-    # async def async_added_to_hass(self):
-    #     """Run when this Entity has been added to HA."""
-    #     # Sensors should also register callbacks to HA when their state changes
-    #     self.coordinator.moonraker.register_callback(self.async_write_ha_state)
-
-    # async def async_will_remove_from_hass(self):
-    #     """Entity being removed from hass."""
-    #     # The opposite of async_added_to_hass. Remove any registered call backs here.
-    #     self.coordinator.moonraker.remove_callback(self.async_write_ha_state)

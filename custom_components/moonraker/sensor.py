@@ -56,6 +56,20 @@ SENSORS_LIST = (
         "unit_of_measurement": "mm",
     },
     {
+        "component": "toolhead",
+        "attribut": "position_z",
+        "name": "Position Z",
+        "attr_icon": "mdi:printer-3d",
+        "unit_of_measurement": "mm",
+    },
+    {
+        "component": "toolhead",
+        "attribut": "position_y",
+        "name": "Position Z",
+        "attr_icon": "mdi:printer-3d",
+        "unit_of_measurement": "mm",
+    },
+    {
         "component": "extruder",
         "attribut": "can_extrude",
         "name": "Extruder can extrude",
@@ -76,12 +90,7 @@ async def async_setup_entry(
     coordinator: MoonrakerUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id]
     entities: list[SensorEntity] = []
     for param in SENSORS_LIST:
-        entities.append(
-            MoonrakerSensorBase(
-                coordinator,
-                param
-            )
-        )
+        entities.append(MoonrakerSensorBase(coordinator, param))
 
     async_add_entities(entities)
 
@@ -92,9 +101,7 @@ class MoonrakerSensorBase(CoordinatorEntity, SensorEntity):
     should_poll = False
 
     def __init__(
-        self,
-        coordinator: MoonrakerUpdateCoordinator,
-        properties : dict
+        self, coordinator: MoonrakerUpdateCoordinator, properties: dict
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
@@ -108,7 +115,6 @@ class MoonrakerSensorBase(CoordinatorEntity, SensorEntity):
         self._attr_icon = properties["attr_icon"]
         self._attr_native_unit_of_measurement = properties["unit_of_measurement"]
 
-
     @property
     def name(self) -> str:
         """Return the name of the sensor."""
@@ -116,21 +122,13 @@ class MoonrakerSensorBase(CoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self) -> StateType:
-        if hasattr(self,"_component") is False :
-             return getattr(self.coordinator.printer, self._attribut)
-        else :
-            return getattr(getattr(self.coordinator.printer, self._component), self._attribut)
+        if hasattr(self, "_component") is False:
+            return getattr(self.coordinator.printer, self._attribut)
+        else:
+            return getattr(
+                getattr(self.coordinator.printer, self._component), self._attribut
+            )
 
     @property
     def device_info(self) -> DeviceInfo:
-        return self.coordinator.device_info
-
-    async def async_added_to_hass(self):
-        """Run when this Entity has been added to HA."""
-        # Sensors should also register callbacks to HA when their state changes
-        self.coordinator.moonraker.register_callback(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self):
-        """Entity being removed from hass."""
-        # The opposite of async_added_to_hass. Remove any registered call backs here.
-        self.coordinator.moonraker.remove_callback(self.async_write_ha_state)
+        return self.coordinator.moonraker.printer.device_info

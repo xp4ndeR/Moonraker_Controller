@@ -5,12 +5,10 @@ import functools
 import logging
 import json
 import websockets
-import asyncio
 from websockets.exceptions import ConnectionClosed  # pylint:disable=unused-import
 from yarl import URL
 
-from homeassistant.core import HomeAssistant, Callable
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.core import HomeAssistant  # , Callable
 from homeassistant.helpers.network import get_url
 from homeassistant.util import slugify as util_slugify
 
@@ -18,11 +16,6 @@ from homeassistant.util import slugify as util_slugify
 # from .common_raker import MoonrakerUpdateCoordinator
 from .printer import Printer
 from .const import DOMAIN, VERSION  # pylint:disable=unused-import
-
-
-MR_API = {
-    "query": {"http": "/printer/objects/query", "ws": "printer.objects.query"},
-}
 
 _LOGGER = logging.getLogger(__name__)
 wslogger = logging.getLogger("websockets")
@@ -41,6 +34,7 @@ class MoonrakerClient:
         "print_stats",
         "webhooks",
         "fan",
+        #"heater_fan%20hotend_fan"
     ]
 
     def __init__(
@@ -74,7 +68,6 @@ class MoonrakerClient:
             scheme="ws", host=self._host, port=self._port, path="/websocket"
         )
         self._callbacks = set()
-        #self._loop = asyncio.get_event_loop()
 
     @property
     def name(self) -> str:
@@ -97,41 +90,38 @@ class MoonrakerClient:
     #         else False
     #     )
 
-    def register_callback(self, callback: Callable[[], None]) -> None:
-        """Register callback, called when Roller changes state."""
-        self._callbacks.add(callback)
+    async def fetch_data(self):
+        #try :
+        if self._printer.klippy.klippy_connected is not True :
+            await self.server_info()
+        return await self.query_objects()
 
-    def remove_callback(self, callback: Callable[[], None]) -> None:
-        """Remove previously registered callback."""
-        self._callbacks.discard(callback)
-
-    async def publish_updates(self) -> None:
-        """Schedule call all registered callbacks."""
-        for callback in self._callbacks:
-            callback()
 
     async def server_info(self) -> bool:
-        """Test connection"""
+        """Get server information (also used as test connection)"""
         url = URL.build(
             scheme=self._protocol,
             host=self._host,
             port=self._port,
             path="/server/info",
         )
-        _LOGGER.debug("test_connection : %s", url)
-        headers = {}
-        ref_json = {}
-        try:
-            func = functools.partial(
-                requests.get, str(url), headers=headers, json=ref_json
-            )
-            res = await self._hass.async_add_executor_job(func)
-            res.json()
-            # self._info=res["result"]
-        except Exception as err:
-            _LOGGER.error("REQUEST FAILED in test_connection function : %s", err)
-            raise err
+        res = self._http_get(url)
+        if res is not None and "result" in res:
+            await self._printer.klippy.update(res["result"])
         _LOGGER.debug("server_info response code: %s", res.status_code)
+        return True if res.status_code == 200 else False
+
+    async def query_objects(self):
+        """Get Data from HTTP(s) Protocol"""
+        url = URL.build(
+            scheme=self._protocol,
+            host=self._host,
+            port=self._port,
+            path="/printer/objects/query",
+            query_string="&".join(self._attr_objects),
+        )
+        res = self._http_get(url)
+        await self._printer.parse(res)
         return True if res.status_code == 200 else False
 
     async def websockets_test(self) -> bool:
@@ -151,6 +141,7 @@ class MoonrakerClient:
             raise err
         return True if self._connection_id is not None else False
 
+
     async def websockets_loop(self, coordinator):
         """Subscribe to updatefrom websockets Protocol"""
         try:
@@ -169,12 +160,11 @@ class MoonrakerClient:
                         )
                     if self._has_sub is False:
                         await websocket.send(self.ws_json_subscribe)
-                while True:
+                while coordinator.listeners:
                     res = await websocket.recv()
                     isok = await self._printer.wsparse(json.loads(res))
                     if isok is True:
-                        #coordinator.async_set_updated_data(isok)
-                        self.publish_updates()
+                        coordinator.async_set_updated_data(isok)
                     _LOGGER.debug("websockets response code: %s", res)
         except ConnectionClosed as err:
             _LOGGER.error("REQUEST websockets : %s", err)
@@ -184,27 +174,7 @@ class MoonrakerClient:
     #           continue
     # return True if res.status_code==200 else False
 
-    async def fetch_data(self):
-        """Get Data from HTTP(s) Protocol"""
-        url = URL.build(
-            scheme=self._protocol,
-            host=self._host,
-            port=self._port,
-            path="/printer/objects/query",
-            query_string="&".join(self._attr_objects),
-        )
-        headers = {}
-        ref_json = {}
-        try:
-            func = functools.partial(
-                requests.get, str(url), headers=headers, json=ref_json
-            )
-            res = await self._hass.async_add_executor_job(func)
-            await self._printer.parse(res.json())
-        except Exception as err:
-            _LOGGER.error("REQUEST FAILED fetch_data : %s", err)
-            raise err
-        return True if res.status_code == 200 else False
+
 
     async def push_data(self, gcode):
         """Send GCODE to moonraker server"""
@@ -228,17 +198,6 @@ class MoonrakerClient:
             raise err
         self._last_status_code = res.status_code
         return True if res.status_code == 200 else False
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Device info."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._id)},
-            manufacturer="Moonraker",
-            name="Moonraker",
-            #        configuration_url=str(configuration_url),
-            #        sw_version=self._printer.moonraker_version,
-        )
 
     @property
     def ws_json_connect(self) -> str:
@@ -274,3 +233,15 @@ class MoonrakerClient:
     def id_number(self):
         self._id_number += 1
         return self._id_number
+
+    async def _http_get(self, url, headers={}, refjson={}) -> json:
+        """Get server information using http get"""
+        try:
+            func = functools.partial(
+                requests.get, str(url), headers=headers, json=refjson
+            )
+            result = await self._hass.async_add_executor_job(func)
+            return result.json()
+        except Exception as err:
+            _LOGGER.error("REQUEST FAILED in http_get function : %s", err)
+            raise err

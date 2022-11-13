@@ -57,7 +57,6 @@ def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Setup Moonraker Controller from a config entry."""
     try:
-        _LOGGER.debug("Moonraker.coordinator: %s", entry.entry_id)
         coordinator = MoonrakerUpdateCoordinator(hass, entry, POLLING)
         await coordinator.async_config_entry_first_refresh()
 

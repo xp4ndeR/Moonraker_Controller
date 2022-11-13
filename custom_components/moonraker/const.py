@@ -12,7 +12,7 @@ CONF_WEBSOCKET = "websocket"
 DEFAULT_PORT = "7125"
 DEFAULT_NAME = "MyPrinter"
 DEFAULT_HOST = "192.168.10.16"
-POLLING = 5
+POLLING = 60
 
 STARTUP_MESSAGE = f"""
 -------------------------------------------------------------------
