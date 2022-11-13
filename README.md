@@ -14,6 +14,8 @@ Add `https://github.com/xp4ndeR/Moonraker_Controller` as repository in `Reposito
 Select `Integration` as `Category`.
 
 ![Step 01](img/HACS_01.png)
+
+
 ![Step 02](img/HACS_02.png)
 
 `Moonraker Controller` is now displayed in HACS integrations. Select it and press `Download this repository with HACS`.
