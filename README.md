@@ -1,8 +1,7 @@
 # Moonraker_Controller
 Moonraker Controller
- Yo !
 
-
+This is an alpha version
 
 ## Installation
 
