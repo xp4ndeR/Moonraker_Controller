@@ -17,7 +17,11 @@
           "ssl": "SSL",
           "websocket": "Websocket",
           "password": "Password",
-          "username": "Username"
+          "username": "Username",
+          "extruder": "Extruder(s) Name",
+          "printer_objects": "Printer Objects",
+          "heater_fan": "Heater Fan",
+          "filament_switch_sensor": "Filament switch sensor(s)"
         }
       }
     }

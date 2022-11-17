@@ -24,13 +24,14 @@ from homeassistant.const import (
 )
 from .const import (
     CONF_WEBSOCKET,
-    POLLING,
-)  # pylint:disable=unused-import
+    CONF_PRINTER_OBJECTS,
+)
 from .moonraker_client import MoonrakerClient, Printer
 
 _LOGGER = logging.getLogger(__name__)
 
 # SCAN_INTERVAL = timedelta(seconds=POLLING)
+
 
 class MoonrakerUpdateCoordinator(DataUpdateCoordinator):
     """My custom coordinator."""
@@ -68,6 +69,7 @@ class MoonrakerUpdateCoordinator(DataUpdateCoordinator):
             config_entry.data.get(CONF_WEBSOCKET),
             config_entry.data.get(CONF_USERNAME),
             config_entry.data.get(CONF_PASSWORD),
+            config_entry.data.get(CONF_PRINTER_OBJECTS),
         )
         self.config_entry = config_entry
 

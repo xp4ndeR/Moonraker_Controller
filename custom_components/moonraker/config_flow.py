@@ -25,6 +25,14 @@ from .const import (
     DOMAIN,
     #    PLATFORMS,
     CONF_WEBSOCKET,
+    CONF_PRINTER_OBJECTS,
+    DEFAULT_PRINTER_OBJECTS,
+    CONF_PRINTER_HEATER_FAN,
+    DEFAULT_PRINTER_HEATER_FAN,
+    CONF_PRINTER_EXTRUDERS,
+    DEFAULT_PRINTER_EXTRUDERS,
+    CONF_PRINTER_FILAMENT_SWITCH_SENSOR,
+    DEFAULT_PRINTER_FILAMENT_SWITCH_SENSOR,
     DEFAULT_PORT,
     DEFAULT_NAME,
     DEFAULT_HOST,
@@ -55,6 +63,26 @@ DATA_SCHEMA = vol.Schema(
         vol.Optional(
             CONF_PASSWORD, default="Your password", description="The password used"
         ): str,
+        vol.Optional(
+            CONF_PRINTER_OBJECTS,
+            default=";".join(DEFAULT_PRINTER_OBJECTS),
+            description="Printer Objects",
+        ): str,
+        vol.Optional(
+            CONF_PRINTER_EXTRUDERS,
+            default=DEFAULT_PRINTER_EXTRUDERS,
+            description="Printer Objects",
+        ): str,
+        vol.Optional(
+            CONF_PRINTER_HEATER_FAN,
+            default=DEFAULT_PRINTER_HEATER_FAN,
+            description="Printer Objects",
+        ): str,
+        vol.Optional(
+            CONF_PRINTER_FILAMENT_SWITCH_SENSOR,
+            default=DEFAULT_PRINTER_FILAMENT_SWITCH_SENSOR,
+            description="Filament switch sensor(s)",
+        ): str,
     }
 )
 
@@ -72,6 +100,7 @@ async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
         data[CONF_WEBSOCKET],
         data[CONF_USERNAME],
         data[CONF_PASSWORD],
+        data[CONF_PRINTER_OBJECTS],
     )
     result = await mrclient.server_info()
     if not result:

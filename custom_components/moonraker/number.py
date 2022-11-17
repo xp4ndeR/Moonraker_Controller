@@ -1,6 +1,6 @@
 """Moonraker  Number Entity for Home Assistant"""
 import logging
-
+import copy
 from homeassistant.const import (
     PERCENTAGE,
 )
@@ -12,22 +12,23 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.components.number import NumberEntity
 from .common_raker import MoonrakerUpdateCoordinator
-from .const import DOMAIN
+from .const import DOMAIN, CONF_PRINTER_EXTRUDERS
 from homeassistant.util import slugify as util_slugify
 
+NUMBER_EXTRUDERS_MODELS = {
+    "component": "extruder",
+    "attribut": "pressure_advance",
+    "name": "Pressure advance",
+    "attr_icon": "mdi:printer-3d-nozzle",
+    "unit_of_measurement": "s",
+    "native_max_value": 1,
+    "native_min_value": 0,
+    "native_step": 0.001,
+    "gcode": "SET_PRESSURE_ADVANCE EXTRUDER=extruder ADVANCE={:.3f}",
+    "mode": "box",
+}
+
 NUMBERS_LIST = (
-    {
-        "component": "extruder",
-        "attribut": "pressure_advance",
-        "name": "Pressure advance",
-        "attr_icon": "mdi:printer-3d-nozzle",
-        "unit_of_measurement": "s",
-        "native_max_value": 1,
-        "native_min_value": 0,
-        "native_step": 0.001,
-        "gcode": "SET_PRESSURE_ADVANCE EXTRUDER=extruder ADVANCE={:.3f}",
-        "mode": "box",
-    },
     {
         "component": "toolhead",
         "attribut": "max_accel",
@@ -103,6 +104,13 @@ async def async_setup_entry(
     entities: list[NumberEntity] = []
     for entity in NUMBERS_LIST:
         entities.append(MoonrakerNumberBase(coordinator, entity))
+
+    extruders = config_entry.data.get(CONF_PRINTER_EXTRUDERS).split(";")
+    for extruder in extruders:
+        ext = copy.deepcopy(NUMBER_EXTRUDERS_MODELS)
+        ext["component"] = extruder
+        ext["name"] = extruder
+        entities.append(MoonrakerNumberBase(coordinator, ext))
 
     async_add_entities(entities)
 

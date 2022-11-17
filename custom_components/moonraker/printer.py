@@ -3,6 +3,7 @@ import logging
 import json
 from .const import DOMAIN
 from homeassistant.helpers.entity import DeviceInfo
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -15,12 +16,11 @@ class Printer:
         self.toolhead = Toolhead(printerid)
         self.extruder = Extruder(printerid)
         self.heater_bed = Heater(printerid)
-        self.klippy= Klipper(printerid)
+        self.klippy = Klipper(printerid)
         self.fan = Fan(printerid)
-        self._state = None
-        self._webhooks = None
-        self._print_stats = None
+        self.webhooks = MoonrakerStats(printerid)
         self._info = None
+        self.print_stats = MoonrakerStats(printerid)
         self.mrstats = MoonrakerStats(printerid)
         _LOGGER.debug("Moonraker::Printer created : %s", self._id)
 
@@ -30,7 +30,10 @@ class Printer:
 
     @property
     def state(self) -> str:
-        return self._state
+        if hasattr(self.print_stats, "state"):
+            return self.print_stats.state
+        else:
+            return "404"
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -43,26 +46,18 @@ class Printer:
             sw_version=self.klippy.moonraker_version,
         )
 
-    async def parse(self, data : json):
+    async def __update(self, component: str, data):
+        if hasattr(self, component):
+            await getattr(self, component).update(data)
+
+    async def parse(self, data: json):
         """Reading result from query"""
         try:
             if data is not None and "result" in data:
                 if "status" in data["result"]:
                     result = data["result"]["status"]
-                    self._state = result["print_stats"]["state"]
-                    if "heater_bed" in result:
-                        await self.heater_bed.update(result["heater_bed"])
-                    if "extruder" in result:
-                        await self.extruder.update(result["extruder"])
-                    if "toolhead" in result:
-                        await self.toolhead.update(result["toolhead"])
-                    if "fan" in result:
-                        await self.fan.update(result["fan"])
-                    if "display_status" in result:
-                        await self.display_status.update(result["display_status"])
-
-                    self._webhooks = result["webhooks"]
-                    self._print_stats = result["print_stats"]
+                    for key in result:
+                        await self.__update(key, result[key])
                 else:
                     _LOGGER.error("Printer.parse : JSON missing status key")
             else:
@@ -105,20 +100,8 @@ class Printer:
                     if isinstance(params, dict):
                         for attr in params:
                             _LOGGER.debug("%s.wsupdate: %s", attr, str(params))
-                            if attr == "heater_bed":
-                                await self.heater_bed.update(params[attr])
-                            elif attr == "extruder":
-                                await self.extruder.update(params[attr])
-                            elif attr == "toolhead":
-                                await self.toolhead.update(params[attr])
-                            elif attr == "fan":
-                                await self.fan.update(params[attr])
-                            elif attr == "display_status":
-                                await self.display_status.update(params[attr])
-
-                    # self._state = result["print_stats"]["state"]
+                            self.__update(attr, params[attr])
                     # self._webhooks = result["webhooks"]
-                    # self._print_stats = result["print_stats"]
 
         except Exception as err:
             _LOGGER.error("REQUEST FAILED: %s", err)
@@ -209,6 +192,7 @@ class Toolhead(PrinterComponent):
         else:
             return None
 
+
 class Fan(PrinterComponent):
     """HeaterBed class for Home Assistant"""
 
@@ -243,6 +227,7 @@ class Klipper(PrinterComponent):
         self.missing_klippy_requirements = []
         self.api_version = []
         self.api_version_string = None
+
 
 class MoonrakerStats:
     """MoonrakerStats class for Home Assistant"""

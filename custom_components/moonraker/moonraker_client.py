@@ -1,7 +1,8 @@
 """ Moonraker Client """
 # import asyncio
 import requests
-from requests import ConnectionError
+
+# from requests import ConnectionError
 import functools
 import logging
 import json
@@ -27,17 +28,6 @@ wslogger.addHandler(logging.StreamHandler())
 class MoonrakerClient:
     """Moonraker Client class to handle http(s):// or ws:// exchange"""
 
-    _attr_objects = [
-        "display_status",
-        "heater_bed",
-        "toolhead",
-        "extruder",
-        "print_stats",
-        "webhooks",
-        "fan",
-        #"heater_fan%20hotend_fan"
-    ]
-
     def __init__(
         self,
         hass: HomeAssistant,
@@ -48,6 +38,10 @@ class MoonrakerClient:
         websocket: bool,
         username: str,
         password: str,
+        objects: list = None,
+        extruders: str = None,
+        heater_fan: str = None,
+        filament_switch_sensor: str = None,
     ) -> None:
         self._connection_id = None
         self._host = host
@@ -68,6 +62,28 @@ class MoonrakerClient:
         self._ws_url = URL.build(
             scheme="ws", host=self._host, port=self._port, path="/websocket"
         )
+        if objects is not None:
+            self._objects = objects.split(";")
+        else:
+            self._objects = []
+        if heater_fan is not None:
+            self._heater_fan = heater_fan.split(";")
+        else:
+            self._heater_fan = []
+        if extruders is not None:
+            self._extruders = extruders.split(";")
+        else:
+            self._extruders = []
+        if filament_switch_sensor is not None:
+            self._filament_switch_sensor = filament_switch_sensor.split(";")
+        else:
+            self._filament_switch_sensor = []
+        self._attr_objects = list(
+            set(self._objects)
+            | set(self._heater_fan)
+            | set(self._extruders)
+            | set(self._filament_switch_sensor)
+        )
         self._callbacks = set()
 
     @property
@@ -82,6 +98,12 @@ class MoonrakerClient:
     def printer(self) -> Printer:
         return self._printer
 
+    @property
+    def id_number(self):
+        """id number to use for Websocket queries"""
+        self._id_number += 1
+        return self._id_number
+
     # @property
     # def available(self) -> bool:
     #     """Return True if Moonraker is available.  And todo in future if klipper service is running a too."""
@@ -90,13 +112,15 @@ class MoonrakerClient:
     #         if self._connection_id is not None or self._last_status_code == 200
     #         else False
     #     )
+    def is_objects(self, obj: str) -> bool:
+        """Test for objects set for the printer"""
+        return obj in self._attr_objects
 
     async def fetch_data(self):
-        #try :
-        if self._printer.klippy.klippy_connected is not True :
+        # try :
+        if self._printer.klippy.klippy_connected is not True:
             await self.server_info()
         return await self.query_objects()
-
 
     async def server_info(self) -> bool:
         """Get server information (also used as test connection)"""
@@ -109,7 +133,7 @@ class MoonrakerClient:
         res = await self._http_get(url)
         if res is not None and "result" in res:
             await self._printer.klippy.update(res["result"])
-        return True # TODO HANDLE Connnection failure
+        return True  # TODO HANDLE Connnection failure
 
     async def query_objects(self):
         """Get Data from HTTP(s) Protocol"""
@@ -122,7 +146,7 @@ class MoonrakerClient:
         )
         res = await self._http_get(url)
         await self._printer.parse(res)
-        return True # TODO HANDLE Connnection failure
+        return True  # TODO HANDLE Connnection failure
 
     async def websockets_test(self) -> bool:
         """Get Connection ID using Websocket protocol"""
@@ -140,7 +164,6 @@ class MoonrakerClient:
             _LOGGER.error("REQUEST FAILED websockets_co : %s", err)
             raise err
         return True if self._connection_id is not None else False
-
 
     async def websockets_loop(self, coordinator):
         """Subscribe to updatefrom websockets Protocol"""
@@ -174,8 +197,6 @@ class MoonrakerClient:
     #           continue
     # return True if res.status_code==200 else False
 
-
-
     async def push_data(self, gcode):
         """Send GCODE to moonraker server"""
         url = URL.build(
@@ -201,6 +222,7 @@ class MoonrakerClient:
 
     @property
     def ws_json_connect(self) -> str:
+        """Websocket JSON to get a connect id from Moonraker"""
         return json.dumps(
             {
                 "jsonrpc": "2.0",
@@ -217,6 +239,7 @@ class MoonrakerClient:
 
     @property
     def ws_json_subscribe(self) -> str:
+        """Websocket JSON to subscribe for update from Moonraker"""
         objects = {}
         for param in self._attr_objects:
             objects[param] = None
@@ -229,17 +252,14 @@ class MoonrakerClient:
             }
         )
 
-    @property
-    def id_number(self):
-        self._id_number += 1
-        return self._id_number
-
     async def _http_get(self, url, headers={}, refjson={}) -> json:
         """Get server information using http get"""
-        func = functools.partial(
-            requests.get, str(url), headers=headers, json=refjson
-        )
+        func = functools.partial(requests.get, str(url), headers=headers, json=refjson)
         result = await self._hass.async_add_executor_job(func)
-        if result.status_code!=200:
-            raise ConnectionError("REQUEST FAILED for {url} with status code {code}".format(url = str(url),code=result.status_code))
+        if result.status_code != 200:
+            raise ConnectionError(
+                "REQUEST FAILED for {url} with status code {code}".format(
+                    url=str(url), code=result.status_code
+                )
+            )
         return result.json()

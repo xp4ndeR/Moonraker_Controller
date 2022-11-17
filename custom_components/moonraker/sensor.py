@@ -1,10 +1,6 @@
 """ MoonrakerSensorBase """
 import logging
 
-from homeassistant.const import (
-    PERCENTAGE,
-    #    TEMP_CELSIUS,
-)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import StateType
@@ -18,65 +14,8 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.util import slugify as util_slugify
 from .common_raker import MoonrakerUpdateCoordinator
-from .const import DOMAIN
+from .const import DOMAIN, SENSORS_LIST
 
-SENSORS_LIST = (
-    {
-        "attribut": "power",
-        "component": "heater_bed",
-        "name": "header bed power",
-        "attr_icon": "mdi:heating-coil",
-        "unit_of_measurement": None,
-    },
-    {
-        "attribut": "power",
-        "component": "heater_bed",
-        "name": "extruder_power",
-        "attr_icon": "mdi:printer-3d",
-        "unit_of_measurement": PERCENTAGE,
-    },
-    {
-        "component": "display_status",
-        "attribut": "progress",
-        "name": "Progress",
-        "attr_icon": "mdi:printer-3d",
-        "unit_of_measurement": PERCENTAGE,
-    },
-    {
-        "attribut": "state",
-        "name": "State",
-        "attr_icon": "mdi:printer-3d",
-        "unit_of_measurement": None,
-    },
-    {
-        "component": "toolhead",
-        "attribut": "position_x",
-        "name": "Position X",
-        "attr_icon": "mdi:printer-3d",
-        "unit_of_measurement": "mm",
-    },
-    {
-        "component": "toolhead",
-        "attribut": "position_z",
-        "name": "Position Z",
-        "attr_icon": "mdi:printer-3d",
-        "unit_of_measurement": "mm",
-    },
-    {
-        "component": "toolhead",
-        "attribut": "position_y",
-        "name": "Position Y",
-        "attr_icon": "mdi:printer-3d",
-        "unit_of_measurement": "mm",
-    },
-    {
-        "component": "extruder",
-        "attribut": "can_extrude",
-        "name": "Extruder can extrude",
-        "attr_icon": "mdi:printer-3d",
-        "unit_of_measurement": None,
-    },
-)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -91,6 +30,10 @@ async def async_setup_entry(
     entities: list[SensorEntity] = []
     for param in SENSORS_LIST:
         entities.append(MoonrakerSensorBase(coordinator, param))
+
+    # EXTRA_SENSORS = config_entry.data.get(CONF_PRINTER_HEATER_FAN).split(";")
+    # for param in EXTRA_SENSORS:
+    #     entities.append(MoonrakerSensorBase(coordinator, param))
 
     async_add_entities(entities)
 
@@ -125,6 +68,7 @@ class MoonrakerSensorBase(CoordinatorEntity, SensorEntity):
         if hasattr(self, "_component") is False:
             return getattr(self.coordinator.printer, self._attribut)
         else:
+            # DEPRECATED : Sensor should be linked to a component in the Printer class
             return getattr(
                 getattr(self.coordinator.printer, self._component), self._attribut
             )
